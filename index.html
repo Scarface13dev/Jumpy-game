@@ -6,6 +6,42 @@
   <title>Jumpy - Le Chien</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
+  <!-- Bouton tactile pour mobile -->
+<button id="jump-button" style="
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  background-color: #ffcc00;
+  color: black;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  z-index: 9999;
+  display: none;
+">
+  Sauter
+</button>
+
+<script>
+  function isMobile() {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  }
+
+  if (isMobile()) {
+    document.getElementById('jump-button').style.display = 'block';
+  }
+
+  const jumpButton = document.getElementById('jump-button');
+  jumpButton.addEventListener('touchstart', () => {
+    if (typeof jump === 'function') {
+      jump();
+    } else {
+      console.warn('Fonction "jump()" non trouvée.');
+    }
+  });
+</script>
 <body>
   <canvas id="gameCanvas" width="800" height="400"></canvas>
   <div class="ui">
