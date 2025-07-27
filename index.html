@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -16,7 +16,7 @@
     <button onclick="restartGame()">Rejouer</button>
   </div>
 
-  <!-- Audio du saut -->
+  <!-- Son du saut -->
   <audio id="jumpSound" src="jump.wav" preload="auto"></audio>
 
   <!-- Bouton tactile pour mobile -->
@@ -37,18 +37,29 @@
     Sauter
   </button>
 
-  <!-- Script pour activer le bouton tactile -->
+  <!-- Script JS -->
   <script>
     function isMobile() {
       return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     }
 
+    // Affiche le bouton si c'est un mobile
     if (isMobile()) {
       document.getElementById('jump-button').style.display = 'block';
     }
 
     const jumpButton = document.getElementById('jump-button');
+    const jumpSound = document.getElementById('jumpSound');
+
+    // Quand on touche le bouton "Sauter"
     jumpButton.addEventListener('touchstart', () => {
+      // Joue le son
+      if (jumpSound) {
+        jumpSound.currentTime = 0;
+        jumpSound.play().catch(e => console.warn("Impossible de jouer le son :", e));
+      }
+
+      // Appelle la fonction jump() du jeu
       if (typeof jump === 'function') {
         jump();
       } else {
