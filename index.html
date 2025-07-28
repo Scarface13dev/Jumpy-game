@@ -4,71 +4,236 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Jumpy - Le Chien</title>
-  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      background: url('background.jpg') no-repeat center center;
+      background-size: cover;
+    }
+
+    #menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 3;
+    }
+
+    #menu h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    #menu select, #menu button {
+      font-size: 20px;
+      padding: 10px 20px;
+      border-radius: 10px;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      z-index: 2;
+    }
+
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #ff8c00;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e67600;
+    }
+  </style>
 </head>
 <body>
-  <!-- Canvas du jeu -->
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-
-  <!-- UI du jeu -->
-  <div class="ui">
-    <div id="score">Score: 0</div>
-    <button onclick="restartGame()">Rejouer</button>
+  <!-- Menu d'accueil -->
+  <div id="menu">
+    <h1>JUMPY 🐶</h1>
+    <label for="dogSelector">Choisis ta race de chien :</label>
+    <select id="dogSelector">
+      <option value="labrador">Labrador</option>
+      <option value="shiba">Shiba</option>
+      <option value="dalmatien">Dalmatien</option>
+    </select>
+    <button id="startGame">Commencer</button>
   </div>
 
-  <!-- Son du saut -->
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+  <div id="controls" style="display:none;">
+    <button id="jumpButton">Sauter</button>
+    <button id="restartButton" style="display:none;">Rejouer</button>
+  </div>
+
   <audio id="jumpSound" src="jump.wav" preload="auto"></audio>
 
-  <!-- Bouton tactile pour mobile -->
-  <button id="jump-button" style="
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 15px 25px;
-    font-size: 18px;
-    border: none;
-    border-radius: 12px;
-    background-color: #ffcc00;
-    color: black;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    z-index: 9999;
-    display: none;
-  ">
-    Sauter
-  </button>
-
-  <!-- Script JS -->
   <script>
-    function isMobile() {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-    // Affiche le bouton si c'est un mobile
-    if (isMobile()) {
-      document.getElementById('jump-button').style.display = 'block';
-    }
+    const jumpBtn = document.getElementById("jumpButton");
+    const restartBtn = document.getElementById("restartButton");
+    const jumpSound = document.getElementById("jumpSound");
+    const dogSelector = document.getElementById("dogSelector");
+    const menu = document.getElementById("menu");
+    const startBtn = document.getElementById("startGame");
+    const controls = document.getElementById("controls");
 
-    const jumpButton = document.getElementById('jump-button');
-    const jumpSound = document.getElementById('jumpSound');
+    const groundY = 350;
+    let dogImage = new Image();
+    let selectedBreed = "labrador";
 
-    // Quand on touche le bouton "Sauter"
-    jumpButton.addEventListener('touchstart', () => {
-      // Joue le son
-      if (jumpSound) {
-        jumpSound.currentTime = 0;
-        jumpSound.play().catch(e => console.warn("Impossible de jouer le son :", e));
-      }
+    const dog = {
+      x: 50,
+      y: groundY - 50,
+      width: 50,
+      height: 50,
+      dy: 0,
+      gravity: 0.8,
+      jumpForce: -12,
+      grounded: true
+    };
 
-      // Appelle la fonction jump() du jeu
-      if (typeof jump === 'function') {
-        jump();
-      } else {
-        console.warn('Fonction "jump()" non trouvée.');
-      }
+    let obstacles = [];
+    let gameOver = false;
+    let score = 0;
+
+    startBtn.addEventListener("click", () => {
+      selectedBreed = dogSelector.value;
+      dogImage.src = `img/${selectedBreed}.png`;
+      menu.style.display = "none";
+      controls.style.display = "flex";
+      restartBtn.style.display = "none";
+      animate();
     });
-  </script>
 
-  <!-- Script principal du jeu -->
-  <script src="game.js"></script>
+    function drawDog() {
+      ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
+    }
+
+    function drawObstacle(obstacle) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    }
+
+    function spawnObstacle() {
+      const height = 50;
+      const width = 50;
+      obstacles.push({
+        x: canvas.width,
+        y: groundY - height,
+        width,
+        height,
+        dx: 5
+      });
+    }
+
+    function updateDog() {
+      dog.dy += dog.gravity;
+      dog.y += dog.dy;
+
+      if (dog.y + dog.height >= groundY) {
+        dog.y = groundY - dog.height;
+        dog.dy = 0;
+        dog.grounded = true;
+      }
+    }
+
+    function detectCollision(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
+    }
+
+    function jump() {
+      if (dog.grounded) {
+        dog.dy = dog.jumpForce;
+        dog.grounded = false;
+        jumpSound.currentTime = 0;
+        jumpSound.play();
+      }
+    }
+
+    jumpBtn.addEventListener("click", jump);
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") jump();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      obstacles = [];
+      dog.y = groundY - dog.height;
+      dog.dy = 0;
+      gameOver = false;
+      score = 0;
+      restartBtn.style.display = "none";
+      animate();
+    });
+
+    function drawScore() {
+      ctx.fillStyle = "white";
+      ctx.font = "24px Arial";
+      ctx.fillText(`Score: ${score}`, 20, 30);
+    }
+
+    function animate() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      updateDog();
+      drawDog();
+
+      if (Math.random() < 0.02) spawnObstacle();
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= obs.dx;
+        drawObstacle(obs);
+
+        if (detectCollision(dog, obs)) {
+          gameOver = true;
+          restartBtn.style.display = "inline-block";
+        }
+
+        if (obs.x + obs.width < 0) {
+          obstacles.splice(i, 1);
+          score++;
+        }
+      }
+
+      drawScore();
+
+      if (!gameOver) {
+        requestAnimationFrame(animate);
+      }
+    }
+  </script>
 </body>
 </html>
