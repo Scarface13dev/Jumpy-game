@@ -1,1 +1,8 @@
-
+/jumpy/
+├── index.html
+├── style.css
+├── game.js
+├── img/
+│   ├── labrador.png
+│   ├── shiba.png
+│   └── bulldog.png
